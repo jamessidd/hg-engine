@@ -64,6 +64,9 @@ OBJCOPY = $(DEVKITARM)/$(PREFIX)objcopy
 endif
 PYTHON_NO_VENV = python3
 VENV = .venv
+# If the system python already has ndspy (e.g. pre-installed in the Docker image),
+# skip the virtualenv + pip install entirely so building works with no network.
+PYTHON_HAS_NDSPY := $(shell $(PYTHON_NO_VENV) -c 'import ndspy' >/dev/null 2>&1 && echo yes || echo no)
 PYTHON_VENV_VERSION := $(shell $(PYTHON_NO_VENV) -m ensurepip 2>&1 | grep -i -q 'No module named'; echo $$?)
 
 ifneq ($(PYTHON_VENV_VERSION), 0)
@@ -75,6 +78,13 @@ else
 # there is no need to use a virtual environment because python does not have the requirements installed
 PYTHON = $(PYTHON_NO_VENV)
 VENV_ACTIVATE =
+endif
+
+# ndspy already available system-wide: use it directly, no venv/pip (offline-safe).
+ifeq ($(PYTHON_HAS_NDSPY), yes)
+PYTHON = $(PYTHON_NO_VENV)
+VENV_ACTIVATE =
+PYTHON_VENV_VERSION := 0
 endif
 
 .PHONY: clean all randomizer randomizer_identity

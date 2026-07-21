@@ -13,5 +13,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -y && DEBIAN_FRONTEND=noninter
 && apt-get update -y \
 && ln -s /proc/self/mounts /etc/mtab || true
 
+# Install the Python build dependency (ndspy) into the image now, while the
+# docker build has network access. This lets `make` run fully offline at
+# container run time (the Makefile skips its venv/pip step when ndspy is already
+# importable), avoiding pypi timeouts if the running container has no internet.
+RUN python3 -m pip install --no-cache-dir ndspy==4.1.0
+
 WORKDIR /hg-engine
 CMD ["/bin/bash", "-lc", "make -j$(nproc)"]
