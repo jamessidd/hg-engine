@@ -2078,7 +2078,7 @@ static u32 LevelCapFromBadges(void)
     // Johto: Falkner 13, Bugsy 17, Whitney 21, Morty 27, Chuck 35, Jasmine 40,
     // Pryce 40, Clair 45; Elite Four/Lance 55; Kanto gyms ~53-62; Red 88.
     static const u8 caps[17] = {
-        13, 17, 21, 27, 35, 40, 40, 45, 55, 56, 57, 58, 60, 61, 62, 63, 100,
+        13, 17, 21, 27, 35, 40, 40, 45, 55, 56, 57, 58, 60, 61, 62, 63, 90,
     };
     void *saveData = SaveBlock2_get();
     struct PlayerProfile *profile;
