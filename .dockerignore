@@ -1,0 +1,24 @@
+# Keep the Docker build context small and avoid copying broken/large paths.
+# The repo is bind-mounted into the container at run time, so none of these are
+# needed inside the image.
+.git
+.venv
+venv
+build
+base
+narc
+sdat
+*.nds
+*.sav
+*_DSPRE_contents
+
+# editor / OS junk
+.vscode
+.vs
+.idea
+*.DS_Store
+Zone.Identifier
+
+# python caches
+**/__pycache__
+*.pyc

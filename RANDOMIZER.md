@@ -19,7 +19,14 @@ Evolutions require no special handling: since the stored species is the mapped s
 
 ## What Is Randomized
 
-The mapping is a one-to-one permutation over every fully-implemented base species in this build (National Dex 1-1025 / internal ids `1..1075` excluding eggs, alternate forms, and reserved placeholders). Legendaries are valid sources and targets. Alternate forms, megas, and primal/form-only species are never used as sources or targets, and any species outside the pool maps to itself.
+The mapping is a one-to-one permutation over every fully-implemented base species in this build. Legendaries are valid sources and targets. Alternate forms, megas, primal/form-only species, and any species outside the pool map to themselves.
+
+The generator builds the pool from two checks so no seed can ever produce a missing/blank sprite:
+
+- Real personal data: the species has a non-placeholder `mondata.s` entry (excludes eggs, alternate forms, and the reserved id block).
+- Real battle sprite: the species has its own front sprite in `data/graphics/sprites/`. Species that reuse a shared placeholder image are dropped.
+
+In the current HGG v2.0 tree this yields a pool of 989 species. The 36 species that are excluded for having placeholder sprites are all late gen 7-9 additions (the Paradox Pokemon, Ogerpon, Terapagos, Necrozma, the Cosmog line, and a handful of others). If real sprites are added for those species later, they are picked up automatically on the next `make randomizer`. Use `--allow-missing-sprites` only if you intentionally want to include placeholder-sprite species.
 
 ## What Is Not Changed
 

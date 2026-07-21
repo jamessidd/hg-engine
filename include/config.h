@@ -39,6 +39,13 @@
 // the mapped species. Comment this out to disable the randomizer entirely.
 #define IMPLEMENT_BUILD_RANDOMIZER
 
+// RANDOMIZER_SMART_TRAINER_MOVES gives remapped trainer Pokemon a curated
+// moveset chosen from the mapped species' level-up pool (best moves by
+// power/accuracy with STAB and attacking-stat weighting, type coverage, and up
+// to one status/setup move) instead of the plain last-4 level-up moves.
+// Comment this out to let remapped trainer mons keep their natural moveset.
+#define RANDOMIZER_SMART_TRAINER_MOVES
+
 // MEGA_EVOLUTIONS defines whether or not Pokémon that are able to mega evolve will be able to do so.
 // commenting this line out essentially disables mega evolutions and maintains default behavior with respect to them.  leaving this as-is will introduce mega evolutions when applied to the game.
 #define MEGA_EVOLUTIONS

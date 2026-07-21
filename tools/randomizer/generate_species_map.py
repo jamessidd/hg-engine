@@ -17,6 +17,7 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import random
 import re
 import secrets
@@ -26,6 +27,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SPECIES = REPO_ROOT / "include" / "constants" / "species.h"
 DEFAULT_MONDATA = REPO_ROOT / "armips" / "data" / "mondata.s"
+DEFAULT_POKEGRA = REPO_ROOT / "data" / "graphics" / "pokegra.mk"
+DEFAULT_SPRITES = REPO_ROOT / "data" / "graphics" / "sprites"
 DEFAULT_HEADER = REPO_ROOT / "include" / "generated" / "randomizer_species_map.h"
 DEFAULT_ARMIPS_STARTERS = REPO_ROOT / "armips" / "data" / "randomizer_starters.s"
 DEFAULT_SPOILER = REPO_ROOT / "build" / "randomizer" / "species_map.tsv"
@@ -33,6 +36,7 @@ DEFAULT_SPOILER = REPO_ROOT / "build" / "randomizer" / "species_map.tsv"
 DEFINE_RE = re.compile(r"^#define\s+(SPECIES_[A-Z0-9_]+)\s+(\d+)\b")
 MAX_CANONICAL_RE = re.compile(r"^#define\s+MAX_CANONICAL_MON_NUM\s+\((SPECIES_[A-Z0-9_]+)\)")
 MONDATA_RE = re.compile(r'^\s*mondata\s+(SPECIES_[A-Z0-9_]+)\s*,\s*"([^"]*)"', re.MULTILINE)
+POKEGRA_FRONT_RE = re.compile(r"build/pokemonpic/(\d{4})-03\.NCGR:\s*(.+?)/male/front\.png")
 PLACEHOLDER_NAME = "-----"
 
 # Non-species entries that carry real display names and therefore are not caught
@@ -92,6 +96,56 @@ def read_excluded_ids(mondata_path: Path, name_to_value: dict[str, int], max_spe
             excluded.add(value)
 
     return excluded
+
+
+def read_placeholder_sprite_ids(pokegra_mk: Path, sprites_dir: Path, max_species: int) -> set[int]:
+    """Return canonical ids whose battle sprite is a placeholder (or missing).
+
+    HGG ships real front sprites for most species but reuses a small number of
+    placeholder images (a generic blank, and a copy of an existing sprite) for
+    species it has not finished. Those placeholders are byte-identical across the
+    unfinished species, so any front sprite whose bytes are shared by more than
+    one species is a placeholder for every species except the lowest-id owner.
+    Species with no non-empty front sprite at all are treated as placeholders too.
+    """
+    if not pokegra_mk.exists():
+        raise SystemExit(f"Could not find sprite build list {pokegra_mk}")
+
+    id_to_folder: dict[int, str] = {}
+    for match in POKEGRA_FRONT_RE.finditer(pokegra_mk.read_text(errors="ignore")):
+        index = int(match.group(1))
+        if 1 <= index <= max_species:
+            id_to_folder[index] = match.group(2)
+
+    def front_digest(folder: str) -> str | None:
+        base = REPO_ROOT / folder
+        for gender in ("male", "female"):
+            path = base / gender / "front.png"
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            if data:
+                return hashlib.md5(data).hexdigest()
+        return None
+
+    digests: dict[int, str | None] = {}
+    for species_id, folder in id_to_folder.items():
+        digests[species_id] = front_digest(folder)
+
+    owner: dict[str, int] = {}
+    for species_id in sorted(digests):
+        digest = digests[species_id]
+        if digest is not None and digest not in owner:
+            owner[digest] = species_id
+
+    placeholders: set[int] = set()
+    for species_id in range(1, max_species + 1):
+        digest = digests.get(species_id)
+        if digest is None or owner.get(digest) != species_id:
+            placeholders.add(species_id)
+
+    return placeholders
 
 
 def build_pool(name_to_value: dict[str, int], max_species: int, excluded: set[int]) -> list[int]:
@@ -213,6 +267,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-unchanged", action="store_true", help="Allow a species to map to itself.")
     parser.add_argument("--species", type=Path, default=DEFAULT_SPECIES)
     parser.add_argument("--mondata", type=Path, default=DEFAULT_MONDATA)
+    parser.add_argument("--pokegra", type=Path, default=DEFAULT_POKEGRA)
+    parser.add_argument("--sprites", type=Path, default=DEFAULT_SPRITES)
+    parser.add_argument(
+        "--allow-missing-sprites",
+        action="store_true",
+        help="Do not exclude species whose battle sprite is a placeholder (not recommended).",
+    )
     parser.add_argument("--header", type=Path, default=DEFAULT_HEADER)
     parser.add_argument("--armips-starters", type=Path, default=DEFAULT_ARMIPS_STARTERS)
     parser.add_argument("--spoiler", type=Path, default=DEFAULT_SPOILER)
@@ -223,6 +284,14 @@ def main() -> None:
     args = parse_args()
     name_to_value, value_to_name, max_species = read_species(args.species)
     excluded = read_excluded_ids(args.mondata, name_to_value, max_species)
+    mondata_excluded = len(excluded)
+
+    sprite_excluded = 0
+    if not args.allow_missing_sprites:
+        placeholders = read_placeholder_sprite_ids(args.pokegra, args.sprites, max_species)
+        sprite_excluded = len(placeholders - excluded)
+        excluded |= placeholders
+
     candidates = build_pool(name_to_value, max_species, excluded)
 
     seed = "identity" if args.identity else (args.seed or secrets.token_hex(8))
@@ -233,7 +302,8 @@ def main() -> None:
     write_spoiler(args.spoiler, mapping, candidates, value_to_name, seed, args.identity)
 
     print(f"randomizer seed: {seed}")
-    print(f"species randomized: {len(candidates)} (canonical max {max_species}, excluded {len(excluded)})")
+    print(f"species randomized: {len(candidates)} (canonical max {max_species})")
+    print(f"excluded: {mondata_excluded} non-species + {sprite_excluded} placeholder-sprite")
     print(f"header: {args.header}")
     print(f"armips starters: {args.armips_starters}")
     print(f"spoiler: {args.spoiler}")

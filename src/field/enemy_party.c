@@ -45,6 +45,235 @@ void randomize(int arr[], int n) {
 
 extern u32 gLastPokemonLevelForMoneyCalc;
 
+#ifdef RANDOMIZER_SMART_TRAINER_MOVES
+/**
+ *  @brief score a single move for a remapped trainer Pokemon
+ *
+ *  Damaging moves are scored by power * accuracy, boosted for STAB and for
+ *  matching the species' stronger attacking stat. Status/utility moves get a
+ *  moderate flat score so at most one can round out a set without displacing a
+ *  strong attack. Positive-priority moves get a bonus.
+ *
+ *  @param species mapped species
+ *  @param form_no form number
+ *  @param move move to score
+ *  @param outIsStatus set to TRUE when the move is a status/no-power move
+ *  @return move score (0 to skip)
+ */
+static u32 Randomizer_ScoreTrainerMove(u16 species, u8 form_no, u16 move, BOOL *outIsStatus)
+{
+    u32 adjustedSpecies = PokeOtherFormMonsNoGet(species, form_no);
+    u32 type1 = PokePersonalParaGet(adjustedSpecies, PERSONAL_TYPE_1);
+    u32 type2 = PokePersonalParaGet(adjustedSpecies, PERSONAL_TYPE_2);
+    u32 attack = PokePersonalParaGet(adjustedSpecies, PERSONAL_BASE_ATTACK);
+    u32 spatk = PokePersonalParaGet(adjustedSpecies, PERSONAL_BASE_SP_ATTACK);
+    u32 power = GetMoveData(move, MOVE_DATA_BASE_POWER);
+    u32 accuracy = GetMoveData(move, MOVE_DATA_ACCURACY);
+    u32 moveType = GetMoveData(move, MOVE_DATA_TYPE);
+    u32 split = GetMoveData(move, MOVE_DATA_PSS_SPLIT);
+    u32 secondary = GetMoveData(move, MOVE_DATA_SECONDARY_EFFECT_CHANCE);
+    s32 priority = (s8)GetMoveData(move, MOVE_DATA_PRIORITY);
+    u32 pp = GetMoveData(move, MOVE_DATA_BASE_PP);
+    u32 score;
+
+    *outIsStatus = FALSE;
+
+    if (move == MOVE_NONE)
+    {
+        return 0;
+    }
+
+    if (accuracy == 0) // never-miss moves store 0 accuracy
+    {
+        accuracy = 100;
+    }
+
+    if (power == 0 || split == SPLIT_STATUS)
+    {
+        *outIsStatus = TRUE;
+        score = 2200 + accuracy * 8 + pp * 15 + secondary * 8;
+    }
+    else
+    {
+        score = power * accuracy;
+
+        if (moveType == type1 || moveType == type2)
+        {
+            score = (score * 3) / 2; // STAB
+        }
+
+        if ((split == SPLIT_PHYSICAL && attack >= spatk) || (split == SPLIT_SPECIAL && spatk >= attack))
+        {
+            score = (score * 6) / 5; // uses the better attacking stat
+        }
+        else
+        {
+            score = (score * 4) / 5; // uses the weaker attacking stat
+        }
+
+        score += secondary * 12;
+    }
+
+    if (priority > 0)
+    {
+        score += (u32)priority * 400;
+    }
+
+    return score;
+}
+
+/**
+ *  @brief give a remapped trainer Pokemon a curated moveset from its level-up pool
+ *
+ *  Considers every distinct level-up move the mapped species knows by its level,
+ *  then greedily picks up to four, penalizing moves whose type is already covered
+ *  (for coverage) and deprioritizing a second status move. Falls back to the
+ *  natural moveset if nothing is available.
+ *
+ *  @param mon PartyPokemon to assign moves to
+ *  @param species mapped species
+ *  @param form_no form number
+ *  @param level level of the Pokemon
+ *  @param heapID heap to use for the learnset buffer
+ */
+static void Randomizer_SetSmartTrainerMoves(struct PartyPokemon *mon, u16 species, u8 form_no, u16 level, int heapID)
+{
+    u32 *learnset = sys_AllocMemory(heapID, LEARNSET_TOTAL_MOVES * sizeof(u32));
+    u16 candMove[LEARNSET_TOTAL_MOVES];
+    u32 candScore[LEARNSET_TOTAL_MOVES];
+    u8 candType[LEARNSET_TOTAL_MOVES];
+    u8 candStatus[LEARNSET_TOTAL_MOVES];
+    int candCount = 0;
+    int i, k;
+
+    if (learnset == NULL)
+    {
+        InitBoxMonMoveset(&mon->box);
+        return;
+    }
+
+    LoadLevelUpLearnset_HandleAlternateForm(species, form_no, learnset);
+
+    for (i = 0; i < LEARNSET_TOTAL_MOVES && learnset[i] != LEVEL_UP_LEARNSET_END; i++)
+    {
+        u16 move = LEVEL_UP_LEARNSET_MOVE(learnset[i]);
+        u32 moveLevel = LEVEL_UP_LEARNSET_LEVEL(learnset[i]);
+        BOOL isStatus = FALSE;
+        BOOL duplicate = FALSE;
+        u32 score;
+
+        if (move == MOVE_NONE || moveLevel > level)
+        {
+            continue;
+        }
+
+        for (k = 0; k < candCount; k++)
+        {
+            if (candMove[k] == move)
+            {
+                duplicate = TRUE;
+                break;
+            }
+        }
+        if (duplicate)
+        {
+            continue;
+        }
+
+        score = Randomizer_ScoreTrainerMove(species, form_no, move, &isStatus);
+        if (score == 0)
+        {
+            continue;
+        }
+
+        candMove[candCount] = move;
+        candScore[candCount] = score;
+        candType[candCount] = (u8)GetMoveData(move, MOVE_DATA_TYPE);
+        candStatus[candCount] = isStatus ? 1 : 0;
+        candCount++;
+    }
+
+    sys_FreeMemoryEz(learnset);
+
+    if (candCount == 0)
+    {
+        InitBoxMonMoveset(&mon->box);
+        return;
+    }
+
+    u16 picked[4];
+    u8 coveredType[4];
+    int pickedCount = 0;
+    int coveredCount = 0;
+    int statusPicked = 0;
+
+    while (pickedCount < 4)
+    {
+        int best = -1;
+        u32 bestScore = 0;
+
+        for (int c = 0; c < candCount; c++)
+        {
+            u32 eff;
+
+            if (candMove[c] == MOVE_NONE) // already consumed
+            {
+                continue;
+            }
+
+            eff = candScore[c];
+
+            if (candStatus[c])
+            {
+                if (statusPicked >= 1)
+                {
+                    eff /= 4; // allow a second status only if nothing better remains
+                }
+            }
+            else
+            {
+                for (int t = 0; t < coveredCount; t++)
+                {
+                    if (coveredType[t] == candType[c])
+                    {
+                        eff /= 3; // type already covered
+                        break;
+                    }
+                }
+            }
+
+            if (best == -1 || eff > bestScore)
+            {
+                best = c;
+                bestScore = eff;
+            }
+        }
+
+        if (best == -1)
+        {
+            break;
+        }
+
+        picked[pickedCount++] = candMove[best];
+        if (candStatus[best])
+        {
+            statusPicked++;
+        }
+        else if (coveredCount < 4)
+        {
+            coveredType[coveredCount++] = candType[best];
+        }
+        candMove[best] = MOVE_NONE; // consume
+    }
+
+    ClearMonMoves(mon);
+    for (i = 0; i < pickedCount; i++)
+    {
+        SetPartyPokemonMoveAtPos(mon, picked[i], i);
+    }
+}
+#endif // RANDOMIZER_SMART_TRAINER_MOVES
+
 /**
  *  @brief create the trainer Party from the trainer data file and trainer party file
  *
@@ -354,6 +583,12 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
                 SetPartyPokemonMoveAtPos(mons[i], moves[j], j);
             }
         }
+#ifdef RANDOMIZER_SMART_TRAINER_MOVES
+        else if (trainerMonWasRemapped)
+        {
+            Randomizer_SetSmartTrainerMoves(mons[i], species, form_no, level, heapID);
+        }
+#endif
         TrainerCBSet(ballseal, mons[i], heapID);
         if (!trainerMonWasRemapped && (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_ABILITY))
         {
