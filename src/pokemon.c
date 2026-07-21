@@ -2072,8 +2072,13 @@ u32 SpeciesAndFormeToWazaOshieIndex(u32 species, u32 form)
  */
 static u32 LevelCapFromBadges(void)
 {
+    // Caps track HGG's actual team levels (from armips/data/trainers/trainers.s):
+    // index = total badges; value = ace level of the next major fight, so the
+    // player enters each gym near parity instead of over-leveled.
+    // Johto: Falkner 13, Bugsy 17, Whitney 21, Morty 27, Chuck 35, Jasmine 40,
+    // Pryce 40, Clair 45; Elite Four/Lance 55; Kanto gyms ~53-62; Red 88.
     static const u8 caps[17] = {
-        13, 17, 22, 27, 32, 37, 42, 46, 50, 56, 62, 68, 74, 80, 86, 92, 100,
+        13, 17, 21, 27, 35, 40, 40, 45, 55, 56, 57, 58, 60, 61, 62, 63, 100,
     };
     void *saveData = SaveBlock2_get();
     struct PlayerProfile *profile;
