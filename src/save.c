@@ -1,5 +1,6 @@
 #include "../include/types.h"
 #include "../include/config.h"
+#include "../include/bag.h"
 #include "../include/debug.h"
 #include "../include/msgdata.h"
 #include "../include/pokemon.h"
@@ -258,6 +259,10 @@ void Save_InitDynamicRegion(SaveData *saveData) {
     saveData->sectorCleanFlag[0] = 1;
     saveData->sectorCleanFlag[1] = 1;
     Save_InitDynamicRegion_Internal(saveData->dynamic_region, saveData->arrayHeaders);
+#ifdef HGG_GRANT_INFINITE_ITEMS
+    // New-game bag is freshly initialized above; grant HGG's reusable key items.
+    Bag_GrantInfiniteKeyItems(Sav2_Bag_get(saveData));
+#endif
 }
 
 void Save_PrepareForAsyncWrite(SaveData *saveData, int a1) {

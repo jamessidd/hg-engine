@@ -2060,6 +2060,45 @@ u32 SpeciesAndFormeToWazaOshieIndex(u32 species, u32 form)
     return ret;
 }
 
+#if defined(IMPLEMENT_LEVEL_CAP) && defined(HGG_BADGE_LEVEL_CAP)
+/**
+ *  @brief derive a level cap from the number of badges the player owns
+ *
+ *  Used when LEVEL_CAP_VARIABLE has not been set by a script (as in the
+ *  open-source HGG base). Values are a smooth Johto->Kanto progression and are
+ *  easy to tune here.
+ *
+ *  @return level cap for the current badge count
+ */
+static u32 LevelCapFromBadges(void)
+{
+    static const u8 caps[17] = {
+        13, 17, 22, 27, 32, 37, 42, 46, 50, 56, 62, 68, 74, 80, 86, 92, 100,
+    };
+    void *saveData = SaveBlock2_get();
+    struct PlayerProfile *profile;
+    u32 badges = 0;
+    u32 bits;
+
+    if (saveData == NULL)
+    {
+        return 100;
+    }
+
+    profile = Sav2_PlayerData_GetProfileAddr(saveData);
+    if (profile == NULL)
+    {
+        return 100;
+    }
+
+    for (bits = profile->johtoBadges; bits != 0; bits >>= 1) badges += (bits & 1);
+    for (bits = profile->kantoBadges; bits != 0; bits >>= 1) badges += (bits & 1);
+    if (badges > 16) badges = 16;
+
+    return caps[badges];
+}
+#endif
+
 /**
  *  @brief get level cap from the script variable defined by LEVEL_CAP_VARIABLE
  *
@@ -2069,6 +2108,9 @@ u32 LONG_CALL GetLevelCap(void)
 {
 #ifdef IMPLEMENT_LEVEL_CAP
     u32 levelCap = GetScriptVar(LEVEL_CAP_VARIABLE);
+#ifdef HGG_BADGE_LEVEL_CAP
+    if (levelCap == 0) levelCap = LevelCapFromBadges();
+#endif
     if (levelCap > 100 || levelCap == 0) levelCap = 100;
     return levelCap;
 #else

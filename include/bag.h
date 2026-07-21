@@ -1,6 +1,7 @@
 #ifndef POKEHEARTGOLD_BAG_H
 #define POKEHEARTGOLD_BAG_H
 
+#include "config.h"
 #include "constants/item.h"
 //#include "item.h"
 #include "save.h"
@@ -87,6 +88,11 @@ void Sav2_Bag_init(BAG_DATA *bagData);
  * @param dst:         Destination BAG_DATA
  */
 void Sav2_Bag_copy(BAG_DATA *src, BAG_DATA *dst);
+
+#ifdef HGG_GRANT_INFINITE_ITEMS
+// Grant HGG's reusable Infinite Candy / Rejuvinator / Ashes key items.
+void Bag_GrantInfiniteKeyItems(BAG_DATA *bag);
+#endif
 
 /*
  * u16 Bag_GetRegisteredItemSlot1(BAG_DATA *bag)

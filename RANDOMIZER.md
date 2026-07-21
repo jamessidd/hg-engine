@@ -71,6 +71,23 @@ make -j$(nproc)
 
 The build output is `test.nds`. Run `make randomizer RANDOMIZER_SEED=another-seed` before building again to produce a different randomized ROM.
 
+## HeartGold Generations QoL Re-adds
+
+The open-source HGG source builds the engine/data layer but not the overworld
+events that HGG applies via DSPRE (item gifts, per-gym level caps, etc.), so a
+from-clean-ROM build is missing some HGG conveniences. Two are re-added here in
+buildable form (toggle in `include/config.h`):
+
+- `HGG_GRANT_INFINITE_ITEMS`: grants the reusable Infinite Candy / Rejuvinator /
+  Ashes key items at the start of a new game (`Save_InitDynamicRegion`).
+- `HGG_BADGE_LEVEL_CAP`: derives a working level cap from the player's badge
+  count when `LEVEL_CAP_VARIABLE` is unset. The cap curve is a plain table in
+  `LevelCapFromBadges()` (`src/pokemon.c`) and is easy to tune.
+
+Other HGG features that live only in the distributed `.nds` (boss rush, custom
+maps, 60fps, etc.) are not reproducible from the open-source source and are not
+included.
+
 ## Reset To Identity / Disable
 
 Restore the generated files to a no-op (identity) mapping:

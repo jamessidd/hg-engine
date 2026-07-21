@@ -189,6 +189,48 @@ BOOL Bag_AddItem(BAG_DATA *bag, u16 itemId, u16 quantity, int heap_id) {
     return TRUE;
 }
 
+#ifdef HGG_GRANT_INFINITE_ITEMS
+// Places HGG's reusable key items directly into the key-items pocket. These are
+// known key items, so we write the slots directly and avoid GetItemData (which
+// would load from the itemdata narc / need a heap) - safe to call at new-game
+// data init. Idempotent: skips any item already present.
+void Bag_GrantInfiniteKeyItems(BAG_DATA *bag) {
+    static const u16 infiniteItems[] = {
+        ITEM_INFINITE_CANDY,
+        ITEM_INFINITE_REJUVINATOR,
+        ITEM_INFINITE_ASHES,
+    };
+    u32 n, i;
+
+    if (bag == NULL) {
+        return;
+    }
+
+    for (n = 0; n < sizeof(infiniteItems) / sizeof(infiniteItems[0]); n++) {
+        u16 item = infiniteItems[n];
+        BOOL done = FALSE;
+
+        for (i = 0; i < NUM_BAG_KEY_ITEMS; i++) {
+            if (bag->keyItems[i].id == item) {
+                done = TRUE; // already present
+                break;
+            }
+        }
+        if (done) {
+            continue;
+        }
+
+        for (i = 0; i < NUM_BAG_KEY_ITEMS; i++) {
+            if (bag->keyItems[i].id == ITEM_NONE) {
+                bag->keyItems[i].id = item;
+                bag->keyItems[i].quantity = 1;
+                break;
+            }
+        }
+    }
+}
+#endif
+
 ITEM_SLOT *Pocket_GetItemSlotForRemove(ITEM_SLOT *slots, u32 count, u16 itemId, u16 quantity) {
     u32 i;
 
