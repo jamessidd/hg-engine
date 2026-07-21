@@ -63,15 +63,13 @@ lsl r4, #8
 add r4, #0xFF
 and r0, r4 // make r0 solely the species
 
-// randomizer: remap encounter species (clears pending form if it changes)
-push {r3, lr}
-bl Randomizer_MapEncounterSpecies
-pop {r3, lr}
-
 
 // reset the function up:
 push {r3-r7, lr}
 sub sp, #0x28
+// randomizer: remap encounter species. lr is now saved on the stack by the push
+// above, so the bl clobbering lr is safe (Thumb pop cannot restore lr).
+bl Randomizer_MapEncounterSpecies
 str r0, [sp, #0x10]
 ldr r6, [sp, #0x40]
 ldr r4, =0x02247918 | 1
@@ -223,10 +221,12 @@ lsl r4, #8
 add r4, #0xFF
 and r0, r4 // make r0 solely the species
 
-// randomizer: remap encounter species (clears pending form if it changes)
-push {r1, lr}
+// randomizer: remap encounter species. lr is already saved on the stack by the
+// real prologue at 0x02247A18, so we only preserve r1 (r2 keeps sp 8-byte
+// aligned for the call; Thumb pop cannot restore lr).
+push {r1, r2}
 bl Randomizer_MapEncounterSpecies
-pop {r1, lr}
+pop {r1, r2}
 
 // reset the function up
 //push {r3-r7, lr}
