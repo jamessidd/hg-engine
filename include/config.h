@@ -46,6 +46,14 @@
 // Comment this out to let remapped trainer mons keep their natural moveset.
 #define RANDOMIZER_SMART_TRAINER_MOVES
 
+// RANDOMIZER_CONSTANT_CATCH_RATE, when defined, replaces every species' catch
+// rate with this single value (0-255) during capture. This makes any remapped
+// species - including legendaries, which normally have a catch rate of ~3 -
+// equally and more easily catchable, while staying below 255 so a catch is
+// easier but never guaranteed (HP, status, and ball still matter). Comment it
+// out to use each species' real catch rate.
+#define RANDOMIZER_CONSTANT_CATCH_RATE 200
+
 // MEGA_EVOLUTIONS defines whether or not Pokémon that are able to mega evolve will be able to do so.
 // commenting this line out essentially disables mega evolutions and maintains default behavior with respect to them.  leaving this as-is will introduce mega evolutions when applied to the game.
 #define MEGA_EVOLUTIONS

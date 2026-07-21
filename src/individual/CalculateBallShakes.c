@@ -71,6 +71,13 @@ u32 __attribute__((section (".init"))) CalculateBallShakesInternal(void *bw, str
         speciesCatchRate = PokePersonalParaGet(sp->battlemon[sp->defence_client].species, PERSONAL_CATCH_RATE);
     }
 
+#ifdef RANDOMIZER_CONSTANT_CATCH_RATE
+    // Randomizer QoL: use one moderate catch rate for every species (including
+    // legendaries) so any remapped species is catchable. Kept below 255 so a
+    // catch is easier but not guaranteed; HP/status/ball still affect the odds.
+    speciesCatchRate = RANDOMIZER_CONSTANT_CATCH_RATE;
+#endif
+
     ballCaptureRatio = 0x1000;
     type1 = BattlePokemonParamGet(sp, sp->defence_client, BATTLE_MON_DATA_TYPE1, 0); // type 1
     type2 = BattlePokemonParamGet(sp, sp->defence_client, BATTLE_MON_DATA_TYPE2, 0); // type 2

@@ -83,6 +83,10 @@ buildable form (toggle in `include/config.h`):
 - `HGG_BADGE_LEVEL_CAP`: derives a working level cap from the player's badge
   count when `LEVEL_CAP_VARIABLE` is unset. The cap curve is a plain table in
   `LevelCapFromBadges()` (`src/pokemon.c`) and is easy to tune.
+- `RANDOMIZER_CONSTANT_CATCH_RATE` (value 0-255): overrides every species' catch
+  rate with one value during capture, so any remapped species - legendaries
+  included - is equally and more easily catchable, but not guaranteed (kept below
+  255; HP/status/ball still matter). Set in `include/config.h`.
 
 Other HGG features that live only in the distributed `.nds` (boss rush, custom
 maps, 60fps, etc.) are not reproducible from the open-source source and are not
