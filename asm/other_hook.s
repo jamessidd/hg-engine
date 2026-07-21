@@ -63,6 +63,11 @@ lsl r4, #8
 add r4, #0xFF
 and r0, r4 // make r0 solely the species
 
+// randomizer: remap encounter species (clears pending form if it changes)
+push {r3, lr}
+bl Randomizer_MapEncounterSpecies
+pop {r3, lr}
+
 
 // reset the function up:
 push {r3-r7, lr}
@@ -217,6 +222,11 @@ mov r4, #7
 lsl r4, #8
 add r4, #0xFF
 and r0, r4 // make r0 solely the species
+
+// randomizer: remap encounter species (clears pending form if it changes)
+push {r1, lr}
+bl Randomizer_MapEncounterSpecies
+pop {r1, lr}
 
 // reset the function up
 //push {r3-r7, lr}

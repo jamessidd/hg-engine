@@ -5,6 +5,7 @@
 #include "../include/debug.h"
 #include "../include/overlay.h"
 #include "../include/pokemon.h"
+#include "../include/randomizer.h"
 #include "../include/rtc.h"
 #include "../include/save.h"
 #include "../include/script.h"
@@ -1486,6 +1487,20 @@ BOOL LONG_CALL GiveMon(int heapId, void *saveData, int species, int level, int f
 
     profile = Sav2_PlayerData_GetProfileAddr(saveData);
     party = SaveData_GetPlayerPartyPtr(saveData);
+
+    // Randomizer: remap before creation so all data comes from the mapped
+    // species. When remapped, drop the script-supplied ability/form so the
+    // mapped species uses its own defaults (the held item/ball are kept).
+    {
+        u8 randomizerForme = (u8)forme;
+        int mappedSpecies = Randomizer_MapSpeciesAndForm(species, &randomizerForme);
+        if (mappedSpecies != species)
+        {
+            forme = randomizerForme;
+            ability = 0;
+        }
+        species = mappedSpecies;
+    }
 
     pokemon = AllocMonZeroed(heapId);
     ZeroMonData(pokemon);

@@ -1,6 +1,7 @@
 #include "../include/types.h"
 #include "../include/pokemon.h"
 #include "../include/npc_trade.h"
+#include "../include/randomizer.h"
 #include "../include/constants/species.h" 
 
 void LONG_CALL _CreateTradeMon(struct PartyPokemon *mon, struct NPCTrade *trade_dat, u32 level, u32 tradeno, u32 mapno, u32 met_level_strat, u32 heapId)
@@ -10,7 +11,10 @@ void LONG_CALL _CreateTradeMon(struct PartyPokemon *mon, struct NPCTrade *trade_
     u32 mapsec;
     int heapId_2;
 
-    PokeParaSet(mon, trade_dat->give_species, level, 32, TRUE, trade_dat->pid, OT_ID_PRESET, trade_dat->otId);
+    // Randomizer: remap so the traded mon's stats/ability/moves/gender come
+    // from the mapped species (the trade keeps its preset PID/OT identity).
+    u16 giveSpecies = Randomizer_MapSpecies(trade_dat->give_species);
+    PokeParaSet(mon, giveSpecies, level, 32, TRUE, trade_dat->pid, OT_ID_PRESET, trade_dat->otId);
 
     heapId_2 = (int)heapId;
     name     = _GetNpcTradeName(heapId_2, tradeno);

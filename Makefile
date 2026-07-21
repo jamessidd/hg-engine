@@ -77,9 +77,19 @@ PYTHON = $(PYTHON_NO_VENV)
 VENV_ACTIVATE =
 endif
 
-.PHONY: clean all
+.PHONY: clean all randomizer randomizer_identity
 
 default: all
+
+# Generate a randomized species map for the next build.
+#   make randomizer RANDOMIZER_SEED=my-seed
+# Omitting RANDOMIZER_SEED generates (and prints) a random seed.
+randomizer:
+	$(PYTHON_NO_VENV) tools/randomizer/generate_species_map.py $(if $(RANDOMIZER_SEED),--seed "$(RANDOMIZER_SEED)",)
+
+# Reset the generated map to identity (no remapping).
+randomizer_identity:
+	$(PYTHON_NO_VENV) tools/randomizer/generate_species_map.py --identity
 
 ifneq ($(PYTHON_VENV_VERSION), 0)
 # only set up venv if we need to

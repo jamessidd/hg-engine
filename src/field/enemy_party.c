@@ -4,6 +4,7 @@
 #include "../../include/config.h"
 #include "../../include/debug.h"
 #include "../../include/pokemon.h"
+#include "../../include/randomizer.h"
 #include "../../include/rtc.h"
 #include "../../include/save.h"
 #include "../../include/script.h"
@@ -149,6 +150,15 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
         offset += 2;
         form_no = (species & 0xF800) >> 11;
         species &= 0x07FF;
+
+        // Randomizer: remap the authored species to its mapped species. When a
+        // mon is remapped, its authored moves/ability/IVs/EVs/nature/custom
+        // stats/nickname are dropped so everything is derived from the new
+        // species (the held item is still honored). All species-derived logic
+        // below (gender, default ability, PokeParaSet) uses the mapped species.
+        u16 originalSpecies = species;
+        species = Randomizer_MapSpeciesAndForm(species, &form_no);
+        BOOL trainerMonWasRemapped = (species != originalSpecies);
 
         // item field - conditional
         if (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_ITEMS)
@@ -337,7 +347,7 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
         {
             SetMonData(mons[i], MON_DATA_HELD_ITEM, &item);
         }
-        if (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_MOVES)
+        if (!trainerMonWasRemapped && (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_MOVES))
         {
             for (j = 0; j < 4; j++)
             {
@@ -345,7 +355,7 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
             }
         }
         TrainerCBSet(ballseal, mons[i], heapID);
-        if (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_ABILITY)
+        if (!trainerMonWasRemapped && (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_ABILITY))
         {
             SetMonData(mons[i], MON_DATA_ABILITY, &ability);
         }
@@ -353,7 +363,7 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
         {
             SetMonData(mons[i], MON_DATA_POKEBALL, &ball);
         }
-        if (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_IV_EV_SET)
+        if (!trainerMonWasRemapped && (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_IV_EV_SET))
         {
             for(j = 0; j < 6; j++)
             {
@@ -365,7 +375,7 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
                 SetMonData(mons[i],MON_DATA_HP_EV + j, &evnums[j]);
             }
         }
-        if (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_NATURE_SET)
+        if (!trainerMonWasRemapped && (bp->trainer_data[num].data_type & TRAINER_DATA_TYPE_NATURE_SET))
         {
             u32 pid = GetMonData(mons[i], MON_DATA_PERSONALITY, NULL);
             u8 currentNature = pid % 25;
@@ -394,6 +404,9 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
             {
                 SetMonData(mons[i],MON_DATA_STATUS, &status);
             }
+            // Drop authored competitive stat/PP/nickname overrides for remapped mons.
+            if (!trainerMonWasRemapped)
+            {
             if (additionalflags & TRAINER_DATA_EXTRA_TYPE_HP)
             {
                 SetMonData(mons[i],MON_DATA_MAXHP, &hp);
@@ -433,6 +446,7 @@ void MakeTrainerPokemonParty(struct BATTLE_PARAM *bp, int num, int heapID)
                 SetMonData(mons[i],MON_DATA_HAS_NICKNAME, &one);
                 SetMonData(mons[i],MON_DATA_NICKNAME, nickname);
             }
+            } // end !trainerMonWasRemapped
         }
         TrainerMonHandleFrustration(mons[i]);
     }

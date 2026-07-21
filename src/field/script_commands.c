@@ -4,6 +4,7 @@
 #include "../../include/config.h"
 #include "../../include/debug.h"
 #include "../../include/pokemon.h"
+#include "../../include/randomizer.h"
 #include "../../include/rtc.h"
 #include "../../include/save.h"
 #include "../../include/script.h"
@@ -32,6 +33,14 @@ BOOL ScrCmd_GiveEgg(SCRIPTCONTEXT *ctx)
 
     u32 form = (species & 0xF800) >> 11; // extract form from egg
     species = species & 0x7FF;
+
+    // Randomizer: remap before SetEggStats so the egg (and the species it
+    // hatches into) is built entirely from the mapped species.
+    {
+        u8 randomizerForm = (u8)form;
+        species = Randomizer_MapSpeciesAndForm(species, &randomizerForm);
+        form = randomizerForm;
+    }
 
     u16 offset = ScriptGetVar(ctx);
 
@@ -89,28 +98,35 @@ BOOL ScrCmd_GiveTogepiEgg(SCRIPTCONTEXT *ctx) {
     togepi = AllocMonZeroed(11);
     ZeroMonData(togepi);
 
-    SetEggStats(togepi, SPECIES_TOGEPI, 1, profile, 3, sub_02017FE4(1, 13));
+    // Randomizer: remap the Togepi egg. When remapped, skip the forced
+    // Extrasensory (illegal on other species) and keep the mapped species'
+    // natural egg moveset.
+    u16 togepiSpecies = Randomizer_MapSpecies(SPECIES_TOGEPI);
+    SetEggStats(togepi, togepiSpecies, 1, profile, 3, sub_02017FE4(1, 13));
 
     //SetMonData(togepi, MON_DATA_FORM, &form); // add form capability
 
     //ClearMonMoves(pokemon);
     //InitBoxMonMoveset(&pokemon->box);
 
-    for (i = 0; i < 4; i++) {
-        if (!GetMonData(togepi, MON_DATA_MOVE1 + i, 0)) {
-            break;
+    if (togepiSpecies == SPECIES_TOGEPI)
+    {
+        for (i = 0; i < 4; i++) {
+            if (!GetMonData(togepi, MON_DATA_MOVE1 + i, 0)) {
+                break;
+            }
         }
+
+        if (i == 4) {
+            i = 3;
+        }
+
+        moveData = MOVE_EXTRASENSORY; // add extrasensory to the togepi
+        SetMonData(togepi, MON_DATA_MOVE1 + i, &moveData);
+
+        pp = GetMonData(togepi, MON_DATA_MOVE1MAXPP + i, 0);
+        SetMonData(togepi, MON_DATA_MOVE1PP + i, &pp);
     }
-
-    if (i == 4) {
-        i = 3;
-    }
-
-    moveData = MOVE_EXTRASENSORY; // add extrasensory to the togepi
-    SetMonData(togepi, MON_DATA_MOVE1 + i, &moveData);
-
-    pp = GetMonData(togepi, MON_DATA_MOVE1MAXPP + i, 0);
-    SetMonData(togepi, MON_DATA_MOVE1PP + i, &pp);
 
     if (CheckScriptFlag(HIDDEN_ABILITIES_FLAG) == 1) // add HA capability
     {

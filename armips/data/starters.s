@@ -8,10 +8,13 @@
 // This will NOT update the text during the starter-selection
 // sequence. To update that text, modify text archive 190 in
 // DSPRE.
+// The starter species come from the generated randomizer table so the
+// selection screen shows (and gives) the mapped starters. Regenerate with
+// `make randomizer`; `make randomizer_identity` restores the original three.
+.include "armips/data/randomizer_starters.s"
+
 .macro STARTER_CHOICES
-    .word SPECIES_CHIKORITA
-    .word SPECIES_CYNDAQUIL
-    .word SPECIES_TOTODILE
+    RANDOMIZER_STARTER_CHOICES
 .endmacro
 
 .open "base/arm9.bin", 0x02000000

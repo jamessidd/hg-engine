@@ -31,6 +31,14 @@
 #define HIDDEN_ABILITIES_FLAG 2600
 #define HIDDEN_ABILITIES_STARTERS_FLAG 2601
 
+// IMPLEMENT_BUILD_RANDOMIZER enables the one-time, build-time species remap.
+// Run `make randomizer RANDOMIZER_SEED=<seed>` before building to generate a
+// fixed mapping (include/generated/randomizer_species_map.h). Every gameplay
+// creation of a source species becomes its mapped species, and all data (name,
+// stats, ability, moves, EVs, IVs, gender, nature, evolutions) is derived from
+// the mapped species. Comment this out to disable the randomizer entirely.
+#define IMPLEMENT_BUILD_RANDOMIZER
+
 // MEGA_EVOLUTIONS defines whether or not Pokémon that are able to mega evolve will be able to do so.
 // commenting this line out essentially disables mega evolutions and maintains default behavior with respect to them.  leaving this as-is will introduce mega evolutions when applied to the game.
 #define MEGA_EVOLUTIONS
